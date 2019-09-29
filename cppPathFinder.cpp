@@ -28,6 +28,16 @@ int main()
 			std::cout << pOutBuffer[i] << std::endl;
 		}
 	}
+
+	{
+		unsigned char pMap[] = { 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1 };
+		int pOutBuffer[12];
+		int length = FindPath(0, 0, 1, 2, pMap, 4, 3, pOutBuffer, 12);
+		std::cout << "\n\nRESULT: steps: " << length << std::endl;
+		for (int i = 0; i < length; i++) {
+			std::cout << pOutBuffer[i] << std::endl;
+		}
+	}
 }
 
 // Run program: Ctrl + F5 or Debug > Start Without Debugging menu

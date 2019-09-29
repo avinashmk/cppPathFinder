@@ -1,69 +1,58 @@
 #include "pch.h"
+
 #include "FindPath.h"
 
-#include <vector>
-#include <algorithm>
-#include <iterator>
 #include <iostream>
-
 #include <cstdio>
-#include <cmath>
 
-#define NOT_EXISTS -1
-#define NOT_TRAVERSABLE -1
-#define MAX_STEPS_REACHED -2
-#define ALREADY_TRAVERSED -3
+#include <vector>
+#include <queue>
+#include <iterator>
+
+constexpr int INVALID = -1;
 
 class Node
 {
 public:
-	int _pos;
-	bool _traversable;
-	int _left;
-	int _right;
-	int _up;
-	int _down;
+	const int position;
+	bool traversable;
+	bool visitedFromStart;
+	bool visitedFromTarget;
+	std::vector<int> pathFootprint;
 
-	Node(const unsigned char value, int position);
+	Node(const int& pos, const unsigned char& value);
 };
 
 class Grid
 {
-	int _width;
-	int _height;
-
-	int _nrOfNodes;
-	int _startPos;
-	int _targetPos;
-
-	int _maxSteps;
-	int _minSteps;
-
-	bool _pathFound;
-	std::vector<int> _route;
-	std::vector<Node*> _nodeList;
+	const int width;
+	const int height;
+	int startPos;  // TODO: make const
+	int targetPos; // TODO: make const
+	const int maxSteps;
+	const int numberOfNodes;
+	std::vector<Node> nodeList;
+	std::vector<int> pathFound;
 
 	void generateNodeList(const unsigned char* pMap);
 
-	int getAtPos(int x, int y);
-	int getLeftPos(int x, int y);
-	int getRightPos(int x, int y);
-	int getUpPos(int x, int y);
-	int getDownPos(int x, int y);
+	int calculatePosAt(int x, int y) const;
+	int calculateLeftPos(const int& pos) const;  //TODO: store calculated values to avoid redundant computation
+	int calculateRightPos(const int& pos) const; //TODO: store calculated values to avoid redundant computation
+	int calculateUpPos(const int& pos) const;    //TODO: store calculated values to avoid redundant computation
+	int calculateDownPos(const int& pos) const;  //TODO: store calculated values to avoid redundant computation
 
-	int getTraversablePos(int pos);
+	int getX(const int & pos) const;
+	int getY(const int & pos) const;
 
-	int getX(int pos); // still needed??
-	int getY(int pos); // still needed??
-
-	int plotRoute(const int presentPos, std::vector<int> route);
-	void setPathFound(std::vector<int> route);
+	int getTraversablePos(int pos) const;
+	void setPath(const int& fMatch, const int& bMatch, int* pOutBuffer);
 
 public:
-	Grid(const int nStartX, const int nStartY,
-		const int nTargetX, const int nTargetY,
-		const unsigned char* pMap, const int nMapWidth,
-		const int nMapHeight, const int nOutBufferSize);
+	Grid(const int& nStartX, const int& nStartY,
+		const int& nTargetX, const int& nTargetY,
+		const unsigned char* pMap, const int& nMapWidth,
+		const int& nMapHeight, const int& nOutBufferSize);
 
 	int plotSolution(int* pOutBuffer);
 };
@@ -77,225 +66,222 @@ int FindPath(const int nStartX, const int nStartY,
 		return 0;
 	}
 	else {
-		Grid grid(nStartX, nStartY, nTargetX, nTargetY, pMap, nMapWidth, nMapHeight, nOutBufferSize);
-		return grid.plotSolution(pOutBuffer);
+		Grid theMaze(nStartX, nStartY, nTargetX, nTargetY, pMap, nMapWidth, nMapHeight, nOutBufferSize);
+		return theMaze.plotSolution(pOutBuffer);
 	}
 }
 
-Node::Node(const unsigned char traversable, int position) : _pos(position), _traversable(false)
+Node::Node(const int& pos, const unsigned char& value) : position(pos), visitedFromStart(false), visitedFromTarget(false)
 {
-	if (static_cast<unsigned char>(1) == traversable) {
-		_traversable = true;
-		////printf("Node::Node() traversable.\n");
+	if (static_cast<unsigned char>(1) == value) {
+		traversable = true;
+		//printf("Node::Node() traversable.\n");
 	}
 	else {
-		////printf("Node::Node() NOT traversable.\n");
+		traversable = false;
+		//printf("Node::Node() NOT traversable.\n");
 	}
 }
 
-Grid::Grid(const int nStartX, const int nStartY,
-	const int nTargetX, const int nTargetY,
-	const unsigned char* pMap, const int nMapWidth,
-	const int nMapHeight, const int nOutBufferSize) : _width(nMapWidth), _height(nMapHeight), _maxSteps(nOutBufferSize), _pathFound(false)
+Grid::Grid(const int& nStartX, const int& nStartY,
+	const int& nTargetX, const int& nTargetY,
+	const unsigned char* pMap, const int& nMapWidth,
+	const int& nMapHeight, const int& nOutBufferSize) : width(nMapWidth), height(nMapHeight), maxSteps(nOutBufferSize), numberOfNodes(width * height)
 {
-	_nrOfNodes = _width * _height;
-	_startPos = getAtPos(nStartX, nStartY);
-	_targetPos = getAtPos(nTargetX, nTargetY);
-	_minSteps = (std::abs(nStartX - nTargetX) + std::abs(nStartY - nTargetY));
+	startPos = calculatePosAt(nStartX, nStartY);
+	targetPos = calculatePosAt(nTargetX, nTargetY);
 
 	generateNodeList(pMap);
 }
 
+int Grid::calculatePosAt(int x, int y) const
+{
+	int pos = (width * y) + x;
+	return pos;
+}
+
 void Grid::generateNodeList(const unsigned char* pMap)
 {
-	for (int index = 0; index < _nrOfNodes; ++index) {
-		_nodeList.push_back(new Node(*(pMap + index), index));
+	for (int index = 0; index < numberOfNodes; ++index) {
+		nodeList.emplace_back(index, *(pMap + index)); // TODO: use emplace_back and stepsArray with stack Step template
+		printf("Grid::generateNodeList() \t %d, %d\n", nodeList.back().position, nodeList.back().traversable);
 	}
-	_nodeList.shrink_to_fit();
-
-	for (int y = 0; y < _height; y++) {
-		for (int x = 0; x < _width; x++) {
-			Node* tmpNode = _nodeList.at(getAtPos(x, y));
-			tmpNode->_left = getTraversablePos(getLeftPos(x, y));
-			tmpNode->_right = getTraversablePos(getRightPos(x, y));
-			tmpNode->_up = getTraversablePos(getUpPos(x, y));
-			tmpNode->_down = getTraversablePos(getDownPos(x, y));
-
-			//printf("Grid::generate_nodeList() \tNode: %d, left: %d, right: %d, up: %d, down: %d\n", 
-			//	tmpNode->_pos, tmpNode->_left, tmpNode->_right, tmpNode->_up, tmpNode->_down);
-		}
-	}
-	//printf("Grid::generate_nodeList() \t _nodeList Generated! _nodeList.size(): %d\n", _nodeList.size());
-}
-
-int Grid::getLeftPos(int x, int y)
-{
-	int pos = NOT_EXISTS;
-
-	if (--x >= 0) {
-		pos = (_width * y) + x;
-	}
-
-	return pos;
-}
-
-int Grid::getRightPos(int x, int y)
-{
-	int pos = NOT_EXISTS;
-
-	if (++x < _width) {
-		pos = (_width * y) + x;
-	}
-
-	return pos;
-}
-
-int Grid::getUpPos(int x, int y)
-{
-	int pos = NOT_EXISTS;
-
-	if (--y >= 0) {
-		pos = (_width * y) + x;
-	}
-
-	return pos;
-}
-
-int Grid::getDownPos(int x, int y)
-{
-	int pos = NOT_EXISTS;
-
-	if (++y < _height) {
-		pos = (_width * y) + x;
-	}
-
-	return pos;
-}
-
-int Grid::getTraversablePos(int pos)
-{
-	if (pos >= 0) {
-		if ((_nodeList.at(pos)->_traversable) || (pos == _targetPos)) {
-			return pos;
-		}
-	}
-	return NOT_TRAVERSABLE;
-}
-
-int Grid::getX(int pos)
-{
-	int x = pos % _width;
-	return x;
-}
-
-int Grid::getY(int pos)
-{
-	int y = pos / _width;
-	return y;
-}
-
-int Grid::getAtPos(int x, int y)
-{
-	int pos = (_width * y) + x;
-	return pos;
+	nodeList.shrink_to_fit();
+	nodeList.at(targetPos).traversable = true;
+	printf("Grid::generate_nodeList() \t nodeList Generated! _nodeList.size(): %d\n", nodeList.size());
 }
 
 int Grid::plotSolution(int* pOutBuffer)
 {
-	//printf("Grid::findPath() \t\t Plotting route from %d to %d\n", _startPos, _targetPos);
-	int result = plotRoute(_startPos, _route);
-	
-	if (_pathFound) {
-		_route.erase(std::begin(_route));
-		//printf("Grid::findPath() \t\t route.size(): %d\n", _route.size());
-		for (auto step = std::begin(_route); step != std::end(_route); pOutBuffer++, step++) {
-			*pOutBuffer = *step;
+	printf("Grid::plotSolution() \t\t ENTER:\n");
+	// Forward Search Prepare:
+	std::queue<int> fwdSearchQ;
+	fwdSearchQ.push(startPos);
+	nodeList.at(startPos).visitedFromStart = true;
+	printf("Grid::plotSolution() \t\t fwdSearchQ: %d\n", startPos);
+
+	// Backward Search Prepare:
+	std::queue<int> bckSearchQ;
+	bckSearchQ.push(targetPos);
+	nodeList.at(targetPos).visitedFromTarget = true;
+	nodeList.at(targetPos).pathFootprint.push_back(targetPos);
+	printf("Grid::plotSolution() \t\t bckSearchQ: %d\n", targetPos);
+
+	printf("Grid::plotSolution() \t\t Plotting solution...\n");
+
+	// Search start:
+	while (!fwdSearchQ.empty()) {
+
+		// Forward Search:
+		int fPos = fwdSearchQ.front();
+		printf("Grid::plotSolution() \t\t fwdSearchQ: %d\n", fPos);
+
+		if (int left = calculateLeftPos(fPos); left != INVALID) {
+			printf("Grid::plotSolution() \t\t           , left: %d\n", left);
+			if (Node& tmpNode = nodeList.at(left); tmpNode.visitedFromTarget) {
+				setPath(fPos, left, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(left).visitedFromStart) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(fPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(left);
+				tmpNode.visitedFromStart = true;
+				fwdSearchQ.push(left);
+			}
 		}
-		return static_cast<int>(_route.size());
+		if (int up = calculateUpPos(fPos); up != INVALID) {
+			printf("Grid::plotSolution() \t\t           , up: %d\n", up);
+			if (Node& tmpNode = nodeList.at(up); tmpNode.visitedFromTarget) {
+				setPath(fPos, up, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(up).visitedFromStart) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(fPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(up);
+				tmpNode.visitedFromStart = true;
+				fwdSearchQ.push(up);
+			}
+		}
+		if (int right = calculateRightPos(fPos); right != INVALID) {
+			printf("Grid::plotSolution() \t\t           , right: %d\n", right);
+			if (Node& tmpNode = nodeList.at(right); tmpNode.visitedFromTarget) {
+				setPath(fPos, right, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(right).visitedFromStart) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(fPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(right);
+				tmpNode.visitedFromStart = true;
+				fwdSearchQ.push(right);
+			}
+		}
+		if (int down = calculateDownPos(fPos); down != INVALID) {
+			printf("Grid::plotSolution() \t\t           , down: %d\n", down);
+			if (Node& tmpNode = nodeList.at(down); tmpNode.visitedFromTarget) {
+				setPath(fPos, down, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(down).visitedFromStart) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(fPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(down);
+				tmpNode.visitedFromStart = true;
+				fwdSearchQ.push(down);
+			}
+		}
+		fwdSearchQ.pop();
 	}
-	return -1;
+	return pathFound.size();
 }
 
-int Grid::plotRoute(const int presentPos, std::vector<int> route) //member function const so that class varibals remain unaffected.
+int Grid::calculateLeftPos(const int& pos) const
 {
-	//printf("Grid::plotRoute() \t\t ENTER: %d\n", presentPos);
-
-	if (auto found = std::find(std::begin(route), std::end(route), presentPos); found != std::end(route)) {
-		//printf("Grid::plotRoute() \t\t Already visited: %d\n", presentPos);
-		return ALREADY_TRAVERSED;
+	int leftPosition = INVALID;
+	if (int x = getX(pos);  --x >= 0) {
+		leftPosition = (width * getY(pos)) + x;
 	}
-	route.push_back(presentPos);
-
-	if (presentPos == _targetPos) { // always false for the first iteration.
-		//printf("Grid::plotRoute() \t\t Route Plotted! %d\n", route.size());
-		if (!(_pathFound && (route.size() > _route.size()))) { // Update in all cases except: Present path is longer than found path.
-			setPathFound(route);
-		}
-		return static_cast<int>(route.size()); // POSITIVE EXIT CONDITION
-	}
-
-	if (route.size() == _maxSteps) {
-		return MAX_STEPS_REACHED; // NEGATIVE EXIT CONDITION
-	}
-
-	if (int leftPos = _nodeList.at(presentPos)->_left; leftPos >= 0) {
-		//printf("Grid::plotRoute() \t\t leftPos: %d\n", leftPos);
-		if (int result = plotRoute(leftPos, route); result > 0) {
-			//printf("Grid::plotRoute() \t\t Route Plotted! Left: %d\n", route.size());
-			if ((route.size() - 1) == _minSteps) {
-				return result; // POSITIVE EXIT CONDITION
-			}
-		}
-		else {
-			//printf("Grid::plotRoute() \t\t pop_back leftPos\n");
-		}
-
-	}
-
-	if (int rightPos = _nodeList.at(presentPos)->_right; rightPos >= 0) {
-		//printf("Grid::plotRoute() \t\t rightPos: %d\n", rightPos);
-		if (int result = plotRoute(rightPos, route); result > 0) {
-			//printf("Grid::plotRoute() \t\t Route Plotted! Right: %d\n", route.size());
-			if ((route.size() - 1) == _minSteps) {
-				return result; // POSITIVE EXIT CONDITION
-			}
-		}
-		else {
-			//printf("Grid::plotRoute() \t\t pop_back rightPos\n");
-		}
-	}
-
-	if (int upPos = _nodeList.at(presentPos)->_up; upPos >= 0) {
-		//printf("Grid::plotRoute() \t\t upPos: %d\n", upPos);
-		if (int result = plotRoute(upPos, route); result > 0) {
-			//printf("Grid::plotRoute() \t\t Route Plotted! Up: %d\n", route.size());
-			if ((route.size() - 1) == _minSteps) {
-				return result; // POSITIVE EXIT CONDITION
-			}
-		}
-		else {
-			//printf("Grid::plotRoute() \t\t pop_back upPos\n");
-		}
-	}
-
-	if (int downPos = _nodeList.at(presentPos)->_down; downPos >= 0) {
-		//printf("Grid::plotRoute() \t\t downPos: %d\n", downPos);
-		if (int result = plotRoute(downPos, route); result > 0) {
-			//printf("Grid::plotRoute() \t\t Route Plotted! Down: %d\n", route.size());
-			if ((route.size() - 1) == _minSteps) {
-				return result; // POSITIVE EXIT CONDITION
-			}
-		}
-		else {
-			//printf("Grid::plotRoute() \t\t pop_back downPos\n");
-		}
-	}
-
-	return NOT_EXISTS; // NEGATIVE EXIT CONDITION
+	return getTraversablePos(leftPosition);
 }
 
-void Grid::setPathFound(std::vector<int> route)
+int Grid::calculateRightPos(const int& pos) const
 {
-	_pathFound = true;
-	_route = std::move(route);
+	int rightPosition = INVALID;
+	if (int x = getX(pos);  ++x < width) {
+		rightPosition = (width * getY(pos)) + x;
+	}
+	return getTraversablePos(rightPosition);
+}
+
+int Grid::calculateUpPos(const int& pos) const
+{
+	int upPosition = INVALID;
+	if (int y = getY(pos); --y >= 0) {
+		upPosition = (width * y) + getX(pos);
+	}
+	return getTraversablePos(upPosition);
+}
+
+int Grid::calculateDownPos(const int& pos) const
+{
+	int downPosition = INVALID;
+	if (int y = getY(pos);  ++y < height) {
+		downPosition = (width * y) + getX(pos);
+	}
+	return getTraversablePos(downPosition);
+}
+
+int Grid::getX(const int& pos) const
+{
+	int x = pos % width;
+	return x;
+}
+
+int Grid::getY(const int& pos) const
+{
+	int y = pos / width;
+	return y;
+}
+
+int Grid::getTraversablePos(int pos) const
+{
+	if (pos >= 0) {
+		if (nodeList.at(pos).traversable) {
+			return pos;
+		}
+	}
+	return INVALID;
+}
+
+void Grid::setPath(const int& fMatch, const int& bMatch, int* pOutBuffer)
+{
+	for (auto step = std::begin(nodeList.at(fMatch).pathFootprint); step != std::end(nodeList.at(fMatch).pathFootprint); step++) {
+		pathFound.push_back(*step);
+	}
+	for (auto step = std::rbegin(nodeList.at(bMatch).pathFootprint); step != std::rend(nodeList.at(bMatch).pathFootprint); step++) {
+		pathFound.push_back(*step);
+	}
+	printf("Grid::setPath() \t bMatch.size(): %d\n", nodeList.at(bMatch).pathFootprint.size());
+
+
+	printf("Grid::setPath() \tPath: ");
+	for (auto step = std::begin(pathFound); step != std::end(pathFound); pOutBuffer++, step++) {
+		printf("%d, ", *step);
+		*pOutBuffer = *step;
+	}
+	std::cout << std::endl;
 }
