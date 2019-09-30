@@ -205,8 +205,81 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		fwdSearchQ.pop();
+
+		// Backward Search:
+		int bPos = bckSearchQ.front();
+		printf("Grid::plotSolution() \t\t bckSearchQ: %d\n", bPos);
+
+		if (int left = calculateLeftPos(bPos); left != INVALID) {
+			printf("Grid::plotSolution() \t\t           , left: %d\n", left);
+			if (Node& tmpNode = nodeList.at(left); tmpNode.visitedFromStart) {
+				setPath(left, bPos, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(left).visitedFromTarget) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(bPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(left);
+				tmpNode.visitedFromTarget = true;
+				bckSearchQ.push(left);
+			}
+		}
+		if (int down = calculateDownPos(bPos); down != INVALID) {
+			printf("Grid::plotSolution() \t\t           , down: %d\n", down);
+			if (Node& tmpNode = nodeList.at(down); tmpNode.visitedFromStart) {
+				setPath(down, bPos, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(down).visitedFromTarget) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(bPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(down);
+				tmpNode.visitedFromTarget = true;
+				bckSearchQ.push(down);
+			}
+		}
+		if (int right = calculateRightPos(bPos); right != INVALID) {
+			printf("Grid::plotSolution() \t\t           , right: %d\n", right);
+			if (Node& tmpNode = nodeList.at(right); tmpNode.visitedFromStart) {
+				setPath(right, bPos, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(right).visitedFromTarget) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(bPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(right);
+				tmpNode.visitedFromTarget = true;
+				bckSearchQ.push(right);
+			}
+		}
+		if (int up = calculateUpPos(bPos); up != INVALID) {
+			printf("Grid::plotSolution() \t\t           , up: %d\n", up);
+			if (Node& tmpNode = nodeList.at(up); tmpNode.visitedFromStart) {
+				setPath(up, bPos, pOutBuffer);
+				break; // solution found!
+			}
+			else if (nodeList.at(up).visitedFromTarget) {
+				// do nothing, ignore.
+			}
+			else {
+				// new node.
+				tmpNode.pathFootprint = nodeList.at(bPos).pathFootprint;
+				tmpNode.pathFootprint.push_back(up);
+				tmpNode.visitedFromTarget = true;
+				bckSearchQ.push(up);
+			}
+		}
 	}
-	return pathFound.size();
+	return pathFound.empty() ? INVALID : pathFound.size();
 }
 
 int Grid::calculateLeftPos(const int& pos) const
@@ -276,7 +349,6 @@ void Grid::setPath(const int& fMatch, const int& bMatch, int* pOutBuffer)
 		pathFound.push_back(*step);
 	}
 	printf("Grid::setPath() \t bMatch.size(): %d\n", nodeList.at(bMatch).pathFootprint.size());
-
 
 	printf("Grid::setPath() \tPath: ");
 	for (auto step = std::begin(pathFound); step != std::end(pathFound); pOutBuffer++, step++) {
