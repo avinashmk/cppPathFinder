@@ -2,8 +2,11 @@
 
 #include "FindPath.h"
 
+#define DEBUG if (false)
+#ifdef DEBUG
 #include <iostream>
 #include <cstdio>
+#endif
 
 #include <vector>
 #include <queue>
@@ -75,11 +78,11 @@ Node::Node(const int& pos, const unsigned char& value) : position(pos), visitedF
 {
 	if (static_cast<unsigned char>(1) == value) {
 		traversable = true;
-		//printf("Node::Node() traversable.\n");
+		//DEBUG printf("Node::Node() traversable.\n");
 	}
 	else {
 		traversable = false;
-		//printf("Node::Node() NOT traversable.\n");
+		//DEBUG printf("Node::Node() NOT traversable.\n");
 	}
 }
 
@@ -104,40 +107,40 @@ void Grid::generateNodeList(const unsigned char* pMap)
 {
 	for (int index = 0; index < numberOfNodes; ++index) {
 		nodeList.emplace_back(index, *(pMap + index)); // TODO: use emplace_back and stepsArray with stack Step template
-		printf("Grid::generateNodeList() \t %d, %d\n", nodeList.back().position, nodeList.back().traversable);
+		DEBUG printf("Grid::generateNodeList() \t %d, %d\n", nodeList.back().position, nodeList.back().traversable);
 	}
 	nodeList.shrink_to_fit();
 	nodeList.at(targetPos).traversable = true;
-	printf("Grid::generate_nodeList() \t nodeList Generated! _nodeList.size(): %d\n", nodeList.size());
+	DEBUG printf("Grid::generate_nodeList() \t nodeList Generated! _nodeList.size(): %d\n", static_cast<int>(nodeList.size()));
 }
 
 int Grid::plotSolution(int* pOutBuffer)
 {
-	printf("Grid::plotSolution() \t\t ENTER:\n");
+	DEBUG printf("Grid::plotSolution() \t\t ENTER:\n");
 	// Forward Search Prepare:
 	std::queue<int> fwdSearchQ;
 	fwdSearchQ.push(startPos);
 	nodeList.at(startPos).visitedFromStart = true;
-	printf("Grid::plotSolution() \t\t fwdSearchQ: %d\n", startPos);
+	DEBUG printf("Grid::plotSolution() \t\t fwdSearchQ: %d\n", startPos);
 
 	// Backward Search Prepare:
 	std::queue<int> bckSearchQ;
 	bckSearchQ.push(targetPos);
 	nodeList.at(targetPos).visitedFromTarget = true;
 	nodeList.at(targetPos).pathFootprint.push_back(targetPos);
-	printf("Grid::plotSolution() \t\t bckSearchQ: %d\n", targetPos);
+	DEBUG printf("Grid::plotSolution() \t\t bckSearchQ: %d\n", targetPos);
 
-	printf("Grid::plotSolution() \t\t Plotting solution...\n");
+	DEBUG printf("Grid::plotSolution() \t\t Plotting solution...\n");
 
 	// Search start:
-	while (!fwdSearchQ.empty()) {
+	while (!fwdSearchQ.empty() || !bckSearchQ.empty()) {
 
 		// Forward Search:
 		int fPos = fwdSearchQ.front();
-		printf("Grid::plotSolution() \t\t fwdSearchQ: %d\n", fPos);
+		DEBUG printf("Grid::plotSolution() \t\t fwdSearchQ: %d\n", fPos);
 
 		if (int left = calculateLeftPos(fPos); left != INVALID) {
-			printf("Grid::plotSolution() \t\t           , left: %d\n", left);
+			DEBUG printf("Grid::plotSolution() \t\t           , left: %d\n", left);
 			if (Node& tmpNode = nodeList.at(left); tmpNode.visitedFromTarget) {
 				setPath(fPos, left, pOutBuffer);
 				break; // solution found!
@@ -154,7 +157,7 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		if (int up = calculateUpPos(fPos); up != INVALID) {
-			printf("Grid::plotSolution() \t\t           , up: %d\n", up);
+			DEBUG printf("Grid::plotSolution() \t\t           , up: %d\n", up);
 			if (Node& tmpNode = nodeList.at(up); tmpNode.visitedFromTarget) {
 				setPath(fPos, up, pOutBuffer);
 				break; // solution found!
@@ -171,7 +174,7 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		if (int right = calculateRightPos(fPos); right != INVALID) {
-			printf("Grid::plotSolution() \t\t           , right: %d\n", right);
+			DEBUG printf("Grid::plotSolution() \t\t           , right: %d\n", right);
 			if (Node& tmpNode = nodeList.at(right); tmpNode.visitedFromTarget) {
 				setPath(fPos, right, pOutBuffer);
 				break; // solution found!
@@ -188,7 +191,7 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		if (int down = calculateDownPos(fPos); down != INVALID) {
-			printf("Grid::plotSolution() \t\t           , down: %d\n", down);
+			DEBUG printf("Grid::plotSolution() \t\t           , down: %d\n", down);
 			if (Node& tmpNode = nodeList.at(down); tmpNode.visitedFromTarget) {
 				setPath(fPos, down, pOutBuffer);
 				break; // solution found!
@@ -208,10 +211,10 @@ int Grid::plotSolution(int* pOutBuffer)
 
 		// Backward Search:
 		int bPos = bckSearchQ.front();
-		printf("Grid::plotSolution() \t\t bckSearchQ: %d\n", bPos);
+		DEBUG printf("Grid::plotSolution() \t\t bckSearchQ: %d\n", bPos);
 
 		if (int left = calculateLeftPos(bPos); left != INVALID) {
-			printf("Grid::plotSolution() \t\t           , left: %d\n", left);
+			DEBUG printf("Grid::plotSolution() \t\t           , left: %d\n", left);
 			if (Node& tmpNode = nodeList.at(left); tmpNode.visitedFromStart) {
 				setPath(left, bPos, pOutBuffer);
 				break; // solution found!
@@ -228,7 +231,7 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		if (int down = calculateDownPos(bPos); down != INVALID) {
-			printf("Grid::plotSolution() \t\t           , down: %d\n", down);
+			DEBUG printf("Grid::plotSolution() \t\t           , down: %d\n", down);
 			if (Node& tmpNode = nodeList.at(down); tmpNode.visitedFromStart) {
 				setPath(down, bPos, pOutBuffer);
 				break; // solution found!
@@ -245,7 +248,7 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		if (int right = calculateRightPos(bPos); right != INVALID) {
-			printf("Grid::plotSolution() \t\t           , right: %d\n", right);
+			DEBUG printf("Grid::plotSolution() \t\t           , right: %d\n", right);
 			if (Node& tmpNode = nodeList.at(right); tmpNode.visitedFromStart) {
 				setPath(right, bPos, pOutBuffer);
 				break; // solution found!
@@ -262,7 +265,7 @@ int Grid::plotSolution(int* pOutBuffer)
 			}
 		}
 		if (int up = calculateUpPos(bPos); up != INVALID) {
-			printf("Grid::plotSolution() \t\t           , up: %d\n", up);
+			DEBUG printf("Grid::plotSolution() \t\t           , up: %d\n", up);
 			if (Node& tmpNode = nodeList.at(up); tmpNode.visitedFromStart) {
 				setPath(up, bPos, pOutBuffer);
 				break; // solution found!
@@ -342,18 +345,22 @@ int Grid::getTraversablePos(int pos) const
 
 void Grid::setPath(const int& fMatch, const int& bMatch, int* pOutBuffer)
 {
+	int totalSteps = static_cast<int>(nodeList.at(fMatch).pathFootprint.size()) + static_cast<int>(nodeList.at(bMatch).pathFootprint.size());
+	if (totalSteps > maxSteps) {
+		return;
+	}
 	for (auto step = std::begin(nodeList.at(fMatch).pathFootprint); step != std::end(nodeList.at(fMatch).pathFootprint); step++) {
 		pathFound.push_back(*step);
 	}
 	for (auto step = std::rbegin(nodeList.at(bMatch).pathFootprint); step != std::rend(nodeList.at(bMatch).pathFootprint); step++) {
 		pathFound.push_back(*step);
 	}
-	printf("Grid::setPath() \t bMatch.size(): %d\n", nodeList.at(bMatch).pathFootprint.size());
+	DEBUG printf("Grid::setPath() \t bMatch.size(): %d\n", static_cast<int>(nodeList.at(bMatch).pathFootprint.size()));
 
-	printf("Grid::setPath() \tPath: ");
+	DEBUG printf("Grid::setPath() \tPath: ");
 	for (auto step = std::begin(pathFound); step != std::end(pathFound); pOutBuffer++, step++) {
-		printf("%d, ", *step);
+		DEBUG printf("%d, ", *step);
 		*pOutBuffer = *step;
 	}
-	std::cout << std::endl;
+	DEBUG std::cout << std::endl;
 }

@@ -4,13 +4,15 @@
 #include "pch.h"
 #include "FindPath.h"
 #include <iostream>
+#include <cstdio>
+#include <vector>
 
 int main()
 {
 	std::cout << "Hello World!\n";
-	
-	{
-		unsigned char pMap[] = { 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1};
+
+	{/*
+		unsigned char pMap[] = { 1, 1, 1, 1, 0, 1, 0, 1, 0, 1, 1, 1 };
 		int pOutBuffer[12];
 		int length = FindPath(0, 0, 1, 2, pMap, 4, 3, pOutBuffer, 12);
 		std::cout << "\n\nRESULT: steps: " << length << std::endl;
@@ -19,10 +21,10 @@ int main()
 		}
 	}
 
-	{/*
+	{
 		unsigned char pMap[] = { 0, 0, 1, 0, 1, 1, 1, 0, 1 };
 		int pOutBuffer[7];
-		int length = FindPath(2, 0, 0, 2, pMap, 3, 3, pOutBuffer, 7); 
+		int length = FindPath(2, 0, 0, 2, pMap, 3, 3, pOutBuffer, 7);
 		std::cout << "\n\nRESULT: steps: " << length << std::endl;
 		for (int i = 0; i < length; i++) {
 			std::cout << pOutBuffer[i] << std::endl;
@@ -33,6 +35,19 @@ int main()
 		unsigned char pMap[] = { 1, 1, 1, 1, 0, 0, 0, 1, 0, 1, 1, 1 };
 		int pOutBuffer[12];
 		int length = FindPath(0, 0, 1, 2, pMap, 4, 3, pOutBuffer, 12);
+		std::cout << "\n\nRESULT: steps: " << length << std::endl;
+		for (int i = 0; i < length; i++) {
+			std::cout << pOutBuffer[i] << std::endl;
+		}
+	}
+
+	{
+		unsigned char pMap[] = { 1, 1, 0, 0,
+			0, 1, 1, 1,
+			0, 0, 0, 0,
+			1, 1, 1, 1 };
+		int pOutBuffer[16];
+		int length = FindPath(0, 0, 3, 1, pMap, 4, 4, pOutBuffer, 16);
 		std::cout << "\n\nRESULT: steps: " << length << std::endl;
 		for (int i = 0; i < length; i++) {
 			std::cout << pOutBuffer[i] << std::endl;
